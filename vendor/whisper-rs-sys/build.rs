@@ -116,7 +116,21 @@ fn main() {
         });
     }
 
-    if env::var("WHISPER_FORCE_GENERATE_BINDINGS").is_ok() || cfg!(feature = "vulkan") {
+    // Bindgen output is untrustworthy on modern libclang: with clang >= 22
+    // (23.1.3 reproduces here), bindgen cannot lay out whisper_full_params
+    // (nested anonymous structs) and emits an opaque `{ _address: u8 }` stub,
+    // which corrupts the params ABI passed to whisper_full. See e.g.
+    // https://github.com/Zackriya-Solutions/meetily/issues/428. The bundled
+    // bindings (src/bindings.rs) are complete and already include the
+    // ggml_backend_vk_* symbols from ggml-vulkan.h, so vulkan builds use
+    // them directly instead of regenerating at build time.
+    //
+    // To regenerate the bundled bindings (requires libclang < 22, e.g. 18):
+    //   LIBCLANG_PATH=<clang18> WHISPER_FORCE_GENERATE_BINDINGS=1 \
+    //     cargo check --no-default-features --features vulkan
+    // then copy OUT_DIR/bindings.rs over src/bindings.rs. Verify the diff
+    // only contains expected header changes.
+    if env::var("WHISPER_FORCE_GENERATE_BINDINGS").is_ok() {
         let bindings = bindgen::Builder::default().header("wrapper.h");
 
         #[cfg(feature = "metal")]

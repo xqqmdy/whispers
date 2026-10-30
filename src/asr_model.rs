@@ -455,6 +455,8 @@ mod tests {
     fn large_v3_turbo_is_marked_recommended() {
         let info = find_model("large-v3-turbo").expect("turbo info");
         assert_eq!(info.support_tier, SupportTier::Recommended);
-        assert!(setup_label(info).contains("[Recommended ]"));
+        // setup_label embeds ANSI styling (tier_token); strip it so the
+        // assertion holds on color-forced terminals (CLICOLOR_FORCE=1).
+        assert!(console::strip_ansi_codes(&setup_label(info)).contains("[Recommended ]"));
     }
 }
